@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buyer Warranty Portal</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f8f8;
+        }
+        .card {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .text-accent {
+            color: #0d9488; /* Teal-700 */
+        }
+        /* Gradient for the left informational panel on the homepage */
+        #page-login #info-panel {
+            background: linear-gradient(135deg, #0f766e 0%, #155e75 100%); /* Deep Teal to Slate Blue */
+        }
+        .status-active {
+            @apply bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium;
+        }
+        .status-expired {
+            @apply bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium;
+        }
+
+        /* CUSTOM STYLES FOR HIGHLIGHTING ACTIVE TAB - Kept basic style but tabs are removed from UI */
+        .tab-active {
+            background-color: #0d9488;
+            color: white !important;
+            font-weight: 600 !important;
+            box-shadow: 0 2px 4px rgba(13, 148, 136, 0.5);
+        }
+        .tab-inactive {
+            color: #4b5563 !important;
+            background-color: #f3f4f6;
+        }
+        /* Simple floating status bar */
+        #floating-status {
+            z-index: 1000;
+            top: 20px;
+            right: 20px;
+        }
+        
+        /* Fix for button interaction effects */
+        .static-button {
+            transition: none !important;
+            background-color: #0d9488 !important; 
+            outline: none !important;
+            box-shadow: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen flex flex-col">
+        
+        <!-- FLOATING STATUS BAR -->
+        <div id="floating-status" class="fixed hidden max-w-sm w-full">
+            <div id="status-content" class="p-4 rounded-xl shadow-lg font-medium text-sm flex items-center justify-between">
+                <span id="status-text"></span>
+                <button onclick="dismissStatus()" class="ml-4 p-1 rounded-full hover:bg-opacity-75" id="dismiss-btn">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header id="header-nav" class="bg-white border-b border-gray-200 shadow-sm hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800">
+                    <span class="text-accent">Buyer</span> Portal
+                </h1>
+                <div class="flex items-center space-x-4">
+                    <span id="user-role-display" class="text-sm font-medium text-gray-500"></span>
+                    <button onclick="handleLogout()" class="bg-red-500 px-3 py-1 rounded-lg text-white font-medium text-sm hover:bg-red-600 transition">Log Out</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow flex p-0">
+            
+            <!-- 1. LOGIN & REGISTRATION PAGE -->
+            <div id="page-login" class="page w-full flex-grow flex flex-col lg:flex-row">
+                
+                <!-- LEFT SIDE: Informational Text -->
+                <div id="info-panel" class="lg:w-1/2 flex items-center justify-center p-8 md:p-12 text-white">
+                    <div class="max-w-xl text-left py-12 lg:py-0">
+                        <h1 class="text-4xl md:text-5xl font-extrabold leading-tight mb-4 lg:mb-6">
+                            Manage your product warranties and personal notes easily.
+                        </h1>
+                        <p class="text-lg md:text-xl font-light opacity-90 mb-6 lg:mb-8">
+                            Register products, track warranty progress, and keep reminders all in one secure, private place.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- RIGHT SIDE: Login/Registration Box -->
+                <div class="flex-grow flex items-center justify-center p-4 lg:w-1/2 bg-gray-50">
+                    <div id="auth-container" class="bg-white p-6 sm:p-8 rounded-xl card w-full max-w-md lg:max-w-lg">
+                        
+                        <!-- TOP BAR: New User Switch -->
+                        <div class="flex justify-end mb-4">
+                            <button id="auth-switch" onclick="toggleMode()" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">
+                                New User? Sign Up
+                            </button>
+                        </div>
+
+                        <!-- MAIN TITLE (FIXED: Now just "Login" or "Sign Up") -->
+                        <h2 id="form-title" class="text-2xl font-bold text-gray-900 mb-6 text-center">
+                            Login
+                        </h2>
+
+                        <!-- DYNAMIC FORM -->
+                        <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+
+                            <!-- Name (Sign-up only) -->
+                            <div id="field-name-container">
+                                <label for="name" id="label-name" class="block text-sm font-medium text-gray-700 mb-1 hidden">Full Name</label>
+                                <input type="text" id="name" name="name" placeholder="Full Name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent transition hidden">
+                            </div>
+
+                            <div>
+                                <label for="gmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="gmail" name="gmail" required placeholder="yourname@example.com" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent transition">
+                            </div>
+
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input type="password" id="password" name="password" required placeholder="••••••••" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent transition">
+                            </div>
+
+                            <div>
+                                <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                                <input type="tel" id="mobile" name="mobile" required placeholder="e.g., 9876543210" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent transition">
+                            </div>
+
+                            <!-- Address (Always Visible) -->
+                            <div id="field-address-container">
+                                <label for="address" id="label-address" class="block text-sm font-medium text-gray-700 mb-1">Home Address</label>
+                                <textarea id="address" name="address" rows="2" placeholder="Your Home Address" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent transition"></textarea>
+                            </div>
+
+                            <!-- SUBMIT BUTTON (FIXED: Now just "Login" or "Sign Up") -->
+                            <button type="submit" id="submit-button" class="w-full bg-accent text-white py-3 rounded-xl font-semibold text-lg static-button mt-6">
+                                Login
+                            </button>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. DASHBOARD PAGE (Dynamic content inside) -->
+            <div id="page-dashboard" class="page hidden w-full max-w-7xl mx-auto flex flex-col lg:flex-row py-8 px-4 sm:px-6 lg:px-8">
+                
+                <!-- DASHBOARD SIDEBAR/TABS -->
+                <nav id="dashboard-sidebar" class="w-full lg:w-64 lg:flex-shrink-0 bg-white rounded-xl p-4 card mb-6 lg:mb-0 lg:mr-8 h-fit">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Navigation</h3>
+                    <!-- Buttons are added dynamically by JS based on user role -->
+                </nav>
+
+                <!-- DASHBOARD CONTENT AREA -->
+                <div class="flex-grow bg-white rounded-xl p-6 md:p-8 card">
+                    <h2 id="dashboard-content-title" class="text-3xl font-bold text-gray-800 mb-6 border-b pb-3"></h2>
+                    <div id="dashboard-content">
+                        <!-- Content of selected section loads here -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- CONSTANTS AND CONFIG ---
+        const USER_STORAGE_KEY = 'warranty_users';
+        const WARRANTY_STORAGE_KEY = 'warranty_records';
+        const PRODUCT_TYPES = ['Electronics', 'Home Appliances', 'Furniture', 'Apparel', 'Automotive', 'Other'];
+
+        let appState = {
+            isSignUpMode: false,
+            // currentRole is fixed to 'buyer' now
+            isLoggedIn: false,
+            userType: 'buyer', // Fixed
+            currentUserDetails: null, 
+        };
+        
+        // Mock QR Code data for auto-filling forms
+        const MOCK_QR_DATA = {
+            product: "UltraMax Pro-Scanner",
+            brand: "QuickTech",
+            productType: "Electronics",
+            serial: "QR-SCAN-7788-2025",
+            purchaseDate: "2025-01-01",
+            expiryDate: "2027-01-01"
+        };
+
+
+        // --- LOCAL STORAGE UTILITIES ---
+
+        /** Initializes local storage to ensure keys exist, but starts empty. */
+        function initializeMockData() {
+            if (localStorage.getItem(USER_STORAGE_KEY) === null) {
+                localStorage.setItem(USER_STORAGE_KEY, JSON.stringify([]));
+            }
+            if (localStorage.getItem(WARRANTY_STORAGE_KEY) === null) {
+                 localStorage.setItem(WARRANTY_STORAGE_KEY, JSON.stringify([]));
+            }
+        }
+
+        /** Retrieves users array from localStorage. */
+        function getUsersFromStorage() {
+            const usersJson = localStorage.getItem(USER_STORAGE_KEY);
+            return usersJson ? JSON.parse(usersJson) : [];
+        }
+
+        /** Saves users array to localStorage. */
+        function saveUsersToStorage(users) {
+            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
+        }
+
+        /** Retrieves warranties array from localStorage. */
+        function getWarrantiesFromStorage() {
+            const warrantiesJson = localStorage.getItem(WARRANTY_STORAGE_KEY);
+            return warrantiesJson ? JSON.parse(warrantiesJson) : [];
+        }
+
+        /** Saves warranties array to localStorage. */
+        function saveWarrantiesToStorage(warranties) {
+            localStorage.setItem(WARRANTY_STORAGE_KEY, JSON.stringify(warranties));
+        }
+
+        // --- DOM Elements (Defined inside onload or functions where possible) ---
+        let floatingStatus, statusContent, statusText, dismissBtn;
+        let formTitle, authSwitch, submitButton;
+        let fieldName, labelName, inputAddress;
+        let dashboardSidebar, userRoleDisplay;
+
+
+        // --- UTILITY FUNCTIONS ---
+        
+        /** Calculates the percentage of warranty time remaining and returns a style object. */
+        function getWarrantyProgress(purchaseDate, expiryDate) {
+            const today = new Date();
+            const start = new Date(purchaseDate);
+            const end = new Date(expiryDate);
+            
+            // Handle edge cases
+            if (end <= today) {
+                return { percent: 0, color: 'bg-red-500', text: 'EXPIRED' };
+            }
+            if (start > today) {
+                // Warranty hasn't started yet
+                return { percent: 100, color: 'bg-gray-400', text: 'PRE-WARRANTY' };
+            }
+
+            const totalDuration = end.getTime() - start.getTime();
+            const timeElapsed = today.getTime() - start.getTime();
+            const timeRemaining = totalDuration - timeElapsed;
+
+            const percentRemaining = Math.max(0, Math.round((timeRemaining / totalDuration) * 100));
+
+            let color = 'bg-green-500';
+            if (percentRemaining < 20) {
+                color = 'bg-red-500'; // Red if < 20% remains
+            } else if (percentRemaining <= 50) {
+                color = 'bg-yellow-500'; // Yellow if 20-50% remains
+            }
+
+            return { percent: percentRemaining, color: color, text: `${percentRemaining}% Remaining` };
+        }
+        
+        /** Renders the progress bar UI. */
+        function renderProgressBar(purchaseDate, expiryDate) {
+            const progress = getWarrantyProgress(purchaseDate, expiryDate);
+            
+            return `
+                <div class="space-y-1">
+                    <div class="text-xs font-semibold ${progress.percent < 20 ? 'text-red-600' : (progress.percent <= 50 ? 'text-yellow-600' : 'text-green-600')}">
+                        ${progress.text}
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="${progress.color} h-2.5 rounded-full" style="width: ${progress.percent}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /** Dismisses the status bar immediately. */
+        window.dismissStatus = function() {
+            floatingStatus.classList.add('hidden');
+        }
+
+        /** Shows a message in the floating status bar (replaces alert/modal). */
+        function showStatus(title, message, isError = false) {
+            // Re-define elements here to ensure they exist if script ran before DOM loaded
+            floatingStatus = document.getElementById('floating-status');
+            statusContent = document.getElementById('status-content');
+            statusText = document.getElementById('status-text');
+            dismissBtn = document.getElementById('dismiss-btn');
+
+            if (!floatingStatus) return console.error('Status bar elements missing.');
+
+            statusText.innerHTML = `<span class="font-bold mr-2">${title}:</span> ${message}`;
+            
+            if (isError) {
+                statusContent.className = 'p-4 rounded-xl shadow-lg font-medium text-sm flex items-center justify-between bg-red-100 text-red-800';
+                dismissBtn.classList.add('text-red-800', 'hover:bg-red-200');
+                dismissBtn.classList.remove('text-green-800', 'hover:bg-green-200');
+            } else {
+                statusContent.className = 'p-4 rounded-xl shadow-lg font-medium text-sm flex items-center justify-between bg-green-100 text-green-800';
+                dismissBtn.classList.add('text-green-800', 'hover:bg-green-200');
+                dismissBtn.classList.remove('text-red-800', 'hover:bg-red-200');
+            }
+            
+            floatingStatus.classList.remove('hidden');
+        }
+
+        /** Toggles between Login and Sign-Up forms. */
+        function toggleMode() {
+            appState.isSignUpMode = !appState.isSignUpMode;
+            updateAuthFormUI();
+        }
+
+        /** Formats status text into a colored badge. */
+        function formatStatus(status) {
+            const statusMap = {
+                'Active': 'status-active',
+                'Expired': 'status-expired',
+                'Claim Filed': 'status-expired',
+            };
+            const statusClass = statusMap[status] || 'bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium';
+            return `<span class="${statusClass}">${status}</span>`;
+        }
+
+        /** Helper to get dashboard sections (Buyer only). */
+        function getDashboardSections() {
+            return [
+                { id: 'buyer-list', title: 'My Warranties', icon: 'list' },
+                { id: 'buyer-register', title: 'Register New Warranty', icon: 'plus' },
+                { id: 'buyer-analytics', title: 'Analytics / Progress', icon: 'chart' },
+                { id: 'buyer-profile', title: 'My Profile', icon: 'profile' },
+                { id: 'buyer-delete', title: 'Remove Warranty', icon: 'trash' },
+            ];
+        }
+
+
+        // --- AUTH UI LOGIC ---
+
+        /** Updates the visibility and labels of the fields on the Login/Sign-up page. */
+        function updateAuthFormUI() {
+            const isSignUp = appState.isSignUpMode;
+            
+            // Define elements locally (or ensure global definitions work)
+            formTitle = document.getElementById('form-title');
+            authSwitch = document.getElementById('auth-switch');
+            submitButton = document.getElementById('submit-button');
+            fieldName = document.getElementById('name');
+            labelName = document.getElementById('label-name');
+
+            const modeText = isSignUp ? 'Sign Up' : 'Login';
+
+            // 1. Update Title and Switch Text (FIXED: Simplified to Login/Sign Up)
+            formTitle.textContent = modeText;
+            authSwitch.textContent = isSignUp ? 'Have an account? Log In' : 'New User? Sign Up';
+            submitButton.textContent = modeText;
+
+            // 2. Name Field (Sign-up only)
+            fieldName.classList.toggle('hidden', !isSignUp);
+            labelName.classList.toggle('hidden', !isSignUp);
+            fieldName.required = isSignUp;
+            
+            // 3. Address Field (Always visible, but required only for sign-up)
+            document.getElementById('address').required = isSignUp;
+
+            // 4. Removed GST Field/Seller specific logic
+        }
+
+        // --- CORE APPLICATION FLOW (LOCAL STORAGE INTEGRATION) ---
+
+        /** Handles Login/Sign-up submission using localStorage. */
+        function handleAuthSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const users = getUsersFromStorage();
+            
+            const email = form.elements['gmail'].value;
+            const password = form.elements['password'].value;
+            const role = 'buyer'; // Fixed role
+
+            if (appState.isSignUpMode) {
+                // --- SIGN UP LOGIC ---
+                const existingUser = users.find(u => u.email === email);
+                if (existingUser) {
+                    showStatus('Registration Failed', 'A user with this email already exists. Please log in.', true);
+                    return;
+                }
+
+                const newUser = {
+                    id: `B-${Date.now()}`,
+                    name: form.elements['name'].value,
+                    email: email,
+                    mobile: form.elements['mobile'].value,
+                    password: password,
+                    address: form.elements['address'].value,
+                    type: role
+                };
+                
+                users.push(newUser);
+                saveUsersToStorage(users);
+                
+                appState.currentUserDetails = newUser;
+                appState.isLoggedIn = true;
+                
+                showStatus('Registration Successful', `Welcome, ${newUser.name}! Redirecting you to the Dashboard.`);
+                form.reset();
+                navigateTo('dashboard');
+                
+            } else {
+                // --- LOGIN LOGIC ---
+                const userByEmail = users.find(u => u.email === email);
+                
+                if (userByEmail) {
+                    if (userByEmail.password !== password) {
+                        showStatus('Login Failed', 'Incorrect password. Please try again.', true);
+                    } else if (userByEmail.type !== role) {
+                        showStatus('Login Failed', `Account type mismatch. This portal is for Buyers only.`, true);
+                    } else {
+                        // Success
+                        appState.currentUserDetails = userByEmail;
+                        appState.isLoggedIn = true;
+                        
+                        showStatus('Login Successful', `Welcome back, ${userByEmail.name}! Redirecting you to your Dashboard.`);
+                        form.reset();
+                        navigateTo('dashboard');
+                    }
+                } else {
+                    showStatus('Login Failed', `No account found with email: ${email}. Please check your spelling or click "New User? Sign Up".`, true);
+                }
+            }
+        }
+
+        /** Handles user logout. */
+        function handleLogout() {
+            appState.isLoggedIn = false;
+            appState.currentUserDetails = null;
+            appState.isSignUpMode = false;
+            navigateTo('login');
+            showStatus('Logged Out', 'You have been successfully logged out.');
+        }
+
+        /** Handles main application navigation (Login <-> Dashboard). */
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
+            document.getElementById(`page-${pageId}`).classList.remove('hidden');
+            
+            if (pageId === 'dashboard') {
+                document.getElementById('header-nav').classList.remove('hidden');
+                setupDashboard();
+            } else {
+                document.getElementById('header-nav').classList.add('hidden');
+            }
+        }
+
+        // --- DASHBOARD LOGIC (Buyer Only) ---
+
+        /** Sets up the dashboard based on the logged-in user type. */
+        function setupDashboard() {
+            if (!appState.currentUserDetails) return;
+            
+            // Define elements locally (or ensure global definitions work)
+            userRoleDisplay = document.getElementById('user-role-display');
+            dashboardSidebar = document.getElementById('dashboard-sidebar');
+
+            userRoleDisplay.textContent = `User: ${appState.currentUserDetails.name} (Buyer)`;
+            
+            dashboardSidebar.innerHTML = `
+                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Actions</h3>
+            `;
+            
+            let sections = getDashboardSections();
+
+            // Setup Sidebar
+            sections.forEach((section, index) => {
+                const btnClass = "w-full text-left py-2 px-3 rounded-lg hover:bg-teal-50 transition flex items-center space-x-2";
+                const button = document.createElement('button');
+                button.className = btnClass + (index === 0 ? ' bg-teal-100 text-accent' : ' text-gray-700');
+                
+                const iconMap = { list: '☰', plus: '+', profile: '⚙️', trash: '🗑️', chart: '📊' };
+                
+                button.innerHTML = `
+                    <span class="w-5 h-5 text-center">${iconMap[section.icon] || '⚫'}</span>
+                    <span class="font-medium">${section.title}</span>
+                `;
+                button.onclick = () => renderDashboardContent(section.id, sections);
+                dashboardSidebar.appendChild(button);
+            });
+
+            // Load the first section by default
+            if (sections.length > 0) {
+                renderDashboardContent(sections[0].id, sections);
+            }
+        }
+
+        /** Renders the content of the selected dashboard section. */
+        // FIX: Added default value for sections so the back button (which doesn't pass sections) works.
+        function renderDashboardContent(sectionId, sections = getDashboardSections()) {
+            const currentSection = sections.find(s => s.id === sectionId) || { title: 'Dashboard' };
+            const dashboardTitle = document.getElementById('dashboard-content-title');
+            const dashboardContentArea = document.getElementById('dashboard-content');
+            
+            dashboardTitle.textContent = currentSection.title;
+            dashboardContentArea.innerHTML = '';
+            
+            // Highlight the active button
+            document.querySelectorAll('#dashboard-sidebar button').forEach(btn => {
+                btn.classList.remove('bg-teal-100', 'text-accent');
+                btn.classList.add('text-gray-700');
+            });
+            const activeButton = Array.from(document.querySelectorAll('#dashboard-sidebar button')).find(btn => btn.textContent.includes(currentSection.title));
+            if (activeButton) {
+                activeButton.classList.add('bg-teal-100', 'text-accent');
+            }
+
+            switch (sectionId) {
+                case 'buyer-profile':
+                    dashboardContentArea.innerHTML = renderUserDetails();
+                    break;
+                case 'buyer-list':
+                    dashboardContentArea.innerHTML = renderWarrantiesList();
+                    break;
+                case 'buyer-register':
+                    dashboardContentArea.innerHTML = renderRegisterForm();
+                    break;
+                case 'buyer-analytics':
+                    dashboardContentArea.innerHTML = renderBuyerAnalytics();
+                    break;
+                case 'buyer-delete':
+                    dashboardContentArea.innerHTML = renderDeleteSection();
+                    break;
+                default:
+                    dashboardContentArea.innerHTML = `<div class="p-6 text-gray-500">Select a section from the left navigation.</div>`;
+            }
+        }
+        
+        /** Renders the Buyer User Details section. */
+        function renderUserDetails() {
+            const user = appState.currentUserDetails;
+            
+            return `
+                <form onsubmit="handleProfileUpdate(event)" class="max-w-md space-y-4">
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="text-lg font-bold text-blue-800">${user.name}</p>
+                        <p class="text-sm text-blue-600">Buyer Account</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-lg border space-y-3">
+                        <div>
+                            <label for="profile-name" class="text-sm font-medium text-gray-700 block mb-1">Full Name</label>
+                            <input type="text" id="profile-name" name="name" value="${user.name}" required class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Email (Uneditable)</p>
+                            <p class="font-semibold text-gray-800">${user.email}</p>
+                        </div>
+                        <div>
+                            <label for="profile-mobile" class="text-sm font-medium text-gray-700 block mb-1">Mobile Number</label>
+                            <input type="tel" id="profile-mobile" name="mobile" value="${user.mobile}" required class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label for="profile-address" class="text-sm font-medium text-gray-700 block mb-1">Address</label>
+                            <textarea id="profile-address" name="address" rows="2" required class="w-full px-3 py-2 border rounded-lg">${user.address}</textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition mt-4">
+                        Save Profile Changes
+                    </button>
+                </form>
+            `;
+        }
+
+        /** Handles saving profile updates to localStorage. */
+        function handleProfileUpdate(event) {
+            event.preventDefault();
+            const form = event.target;
+            const newName = form.elements['name'].value;
+            const newMobile = form.elements['mobile'].value;
+            const newAddress = form.elements['address'].value;
+            
+            let users = getUsersFromStorage();
+            
+            const userIndex = users.findIndex(u => u.email === appState.currentUserDetails.email);
+
+            if (userIndex !== -1) {
+                // Update local state and storage
+                appState.currentUserDetails.name = newName;
+                appState.currentUserDetails.mobile = newMobile;
+                appState.currentUserDetails.address = newAddress;
+                
+                users[userIndex] = appState.currentUserDetails;
+                saveUsersToStorage(users);
+                
+                showStatus('Success', 'Your profile details have been updated successfully.');
+                renderDashboardContent('buyer-profile', getDashboardSections()); // Re-render to show new data
+            } else {
+                showStatus('Error', 'Could not find user in local records.', true);
+            }
+        }
+
+        /** Renders the Analytics/Progress section for the buyer. */
+        function renderBuyerAnalytics() {
+            const warrantyData = getWarrantiesFromStorage();
+            const list = warrantyData.filter(w => w.email === appState.currentUserDetails.email);
+            
+            if (list.length === 0) {
+                return '<div class="p-4 bg-yellow-50 text-yellow-800 rounded-lg">No warranty records found for analytics. Register a new warranty to begin tracking.</div>';
+            }
+
+            const activeWarranties = list.filter(w => getWarrantyProgress(w.purchaseDate, w.expiryDate).percent > 0);
+            
+            const rows = list.map(item => {
+                const progress = getWarrantyProgress(item.purchaseDate, item.expiryDate);
+                const expiryTextClass = progress.percent < 20 && progress.percent > 0 ? 'text-red-500 font-bold' : 'text-gray-600';
+
+                return `
+                    <div class="p-4 bg-white rounded-xl border space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-grow">
+                                <p class="text-lg font-semibold text-gray-800">${item.product} (${item.brand})</p>
+                                <p class="text-xs text-gray-500">Serial: ${item.serial}</p>
+                            </div>
+                            <span class="${expiryTextClass} text-sm">${item.expiryDate}</span>
+                        </div>
+                        ${renderProgressBar(item.purchaseDate, item.expiryDate)}
+                        <p class="text-xs text-gray-500 pt-2">
+                           **Personal Note:** ${item.notes ? item.notes.substring(0, 100) + (item.notes.length > 100 ? '...' : '') : 'No notes recorded.'}
+                        </p>
+                        <button onclick="renderDetailView(${item.id}, 'list')" class="text-accent hover:text-teal-900 text-sm font-medium transition mt-2">View Full Details</button>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-teal-50 p-6 rounded-xl border border-teal-200">
+                        <p class="text-sm font-medium text-gray-500">Total Registered</p>
+                        <p class="text-4xl font-bold text-accent">${list.length}</p>
+                    </div>
+                    <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-200">
+                        <p class="text-sm font-medium text-gray-500">Active Warranties</p>
+                        <p class="text-4xl font-bold text-indigo-700">${activeWarranties.length}</p>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Warranty Progress Tracking</h3>
+                <div class="space-y-4">
+                    ${rows}
+                </div>
+            `;
+        }
+
+
+        /** Renders the list of warranties (Buyer only). */
+        function renderWarrantiesList() {
+            const warrantyData = getWarrantiesFromStorage();
+            const list = warrantyData.filter(w => w.email === appState.currentUserDetails.email); 
+            
+            if (list.length === 0) {
+                return '<div class="p-4 bg-yellow-50 text-yellow-800 rounded-lg">No warranty records found. Use "Register New Warranty" to add your products.</div>';
+            }
+
+            const headerRow = `
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name / Serial</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining Time</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            `;
+
+            const tableRows = list.map(item => {
+                const progress = getWarrantyProgress(item.purchaseDate, item.expiryDate);
+
+                const cells = `
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.product}<br><span class="text-xs text-gray-400">${item.serial}</span></td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${item.expiryDate}</td>
+                    <td class="px-6 py-4 text-sm">${progress.text}</td>
+                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                        <button onclick="renderDetailView(${item.id}, 'list')" class="text-accent hover:text-teal-900 text-sm font-medium transition">View Details</button>
+                    </td>
+                `;
+
+                return `<tr class="hover:bg-gray-50 transition">${cells}</tr>`;
+            }).join('');
+
+            return `
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                ${headerRow}
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        /** Renders the form for adding a new warranty. */
+        function renderRegisterForm() {
+            const typeOptions = PRODUCT_TYPES.map(type => `<option value="${type}">${type}</option>`).join('');
+
+            return `
+                <form id="warranty-reg-form" onsubmit="handleNewWarrantySubmit(event)" class="max-w-xl mx-auto space-y-4">
+                    
+                    <button type="button" onclick="mockQrScan()" class="w-full bg-indigo-500 text-white py-2 rounded-xl font-semibold hover:bg-indigo-600 transition mb-4">
+                        Scan QR Code (Mock Auto-fill)
+                    </button>
+                    
+                    <h4 class="text-xl font-semibold mb-4 border-t pt-4">Product Details</h4>
+
+                    <div>
+                        <label for="reg-product" class="block text-sm font-medium text-gray-700 mb-1">Product Name / Model</label>
+                        <input type="text" id="reg-product" name="product" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent" placeholder="e.g., Ultra Mixer 3000">
+                    </div>
+                    <div>
+                        <label for="reg-brand" class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+                        <input type="text" id="reg-brand" name="brand" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent" placeholder="e.g., KitchenAid">
+                    </div>
+                    <div>
+                        <label for="reg-type" class="block text-sm font-medium text-gray-700 mb-1">Product Type</label>
+                        <select id="reg-type" name="productType" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+                            <option value="">-- Select Product Category --</option>
+                            ${typeOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="reg-serial" class="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                        <input type="text" id="reg-serial" name="serial" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent" placeholder="SN-XXXX-YYYY">
+                    </div>
+                    <div>
+                        <label for="reg-purchase-date" class="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
+                        <input type="date" id="reg-purchase-date" name="purchaseDate" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+                    </div>
+                    <div>
+                        <label for="reg-expiry-date" class="block text-sm font-medium text-gray-700 mb-1">Warranty Expiry Date</label>
+                        <input type="date" id="reg-expiry-date" name="expiryDate" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+                        <p class="text-xs text-gray-500 mt-1">This date determines the warranty duration.</p>
+                    </div>
+
+                    <!-- NEW: Personal Notes Field -->
+                    <div>
+                        <label for="reg-notes" class="block text-sm font-medium text-gray-700 mb-1">Personal Notes / Reminders</label>
+                        <textarea id="reg-notes" name="notes" rows="3" placeholder="e.g., 'Must get extended warranty before May 2027'" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent"></textarea>
+                    </div>
+
+                    <div>
+                        <label for="reg-invoice" class="block text-sm font-medium text-gray-700 mb-1">Invoice/Receipt Upload (Mock)</label>
+                        <input type="file" id="reg-invoice" name="invoice" class="w-full p-2 border border-gray-300 rounded-lg bg-white">
+                    </div>
+
+                    <button type="submit" class="w-full bg-accent text-white py-3 rounded-xl font-semibold text-lg hover:bg-teal-600 transition mt-6">
+                        Confirm Registration
+                    </button>
+                </form>
+            `;
+        }
+        
+        /** Mock QR Code Scan and Autofill */
+        function mockQrScan() {
+            const form = document.getElementById('warranty-reg-form');
+            if (!form) return;
+
+            // Fill Product Details
+            form.elements['product'].value = MOCK_QR_DATA.product;
+            form.elements['brand'].value = MOCK_QR_DATA.brand;
+            form.elements['productType'].value = MOCK_QR_DATA.productType;
+            form.elements['serial'].value = MOCK_QR_DATA.serial;
+            form.elements['purchaseDate'].value = MOCK_QR_DATA.purchaseDate;
+            form.elements['expiryDate'].value = MOCK_QR_DATA.expiryDate;
+
+            showStatus('QR Scan Success', `Product details for ${MOCK_QR_DATA.product} have been auto-filled.`);
+        }
+
+        /** Handles submission of the new warranty form (LOCAL STORAGE CRUD). */
+        function handleNewWarrantySubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            let warrantyData = getWarrantiesFromStorage();
+            
+            const nextId = warrantyData.length > 0 ? Math.max(...warrantyData.map(w => w.id)) + 1 : 1;
+            const currentUser = appState.currentUserDetails;
+
+            const invoiceFile = form.elements['invoice'].files[0];
+            const invoiceFileName = invoiceFile ? invoiceFile.name : 'No file uploaded';
+            
+            const newRecord = {
+                id: nextId,
+                customer: currentUser.name,
+                email: currentUser.email,
+                mobile: currentUser.mobile,
+                serial: form.elements['serial'].value,
+                product: form.elements['product'].value,
+                brand: form.elements['brand'].value,
+                productType: form.elements['productType'].value,
+                purchaseDate: form.elements['purchaseDate'].value,
+                expiryDate: form.elements['expiryDate'].value,
+                notes: form.elements['notes'].value || '', // NEW: Save Personal Notes
+                status: 'Active',
+                invoiceFileName: invoiceFileName
+            };
+
+            warrantyData.push(newRecord);
+            saveWarrantiesToStorage(warrantyData);
+
+            showStatus('Success!', `New Warranty for ${newRecord.product} registered successfully!`);
+            form.reset();
+            
+            renderDashboardContent('buyer-list', []);
+        }
+
+        /** Renders the section for deleting warranties. */
+        function renderDeleteSection() {
+            const warrantyData = getWarrantiesFromStorage();
+            const list = warrantyData.filter(w => w.email === appState.currentUserDetails.email);
+            
+            if (list.length === 0) {
+                return '<div class="p-4 bg-yellow-50 text-yellow-800 rounded-lg">No warranties to delete.</div>';
+            }
+
+            const rows = list.map(item => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.product}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${item.serial}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${item.expiryDate}</td>
+                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                        <button onclick="handleDeleteWarranty(${item.id})" class="text-red-600 hover:text-red-900 text-sm font-medium transition">
+                            Permanently Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            return `
+                <p class="mb-4 text-sm text-gray-600">Select a record to permanently delete it from the system.</p>
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial #</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                                <th class="px-6 py-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        /** Handles deletion of a warranty record (LOCAL STORAGE CRUD). */
+        function handleDeleteWarranty(id) {
+            let warrantyData = getWarrantiesFromStorage();
+            warrantyData = warrantyData.filter(w => w.id !== id);
+            saveWarrantiesToStorage(warrantyData);
+
+            showStatus('Record Deleted', `Warranty ID ${id} has been successfully removed.`);
+            
+            // Re-render the delete section to update the list
+            renderDashboardContent('buyer-delete', []); 
+        }
+        
+        /** Handles saving the updated Personal Notes. */
+        function handleNotesUpdate(event, id) {
+             event.preventDefault();
+             const newNotes = event.target.elements['notes-edit'].value;
+             let warrantyData = getWarrantiesFromStorage();
+             const index = warrantyData.findIndex(w => w.id === id);
+
+             if (index !== -1) {
+                warrantyData[index].notes = newNotes;
+                saveWarrantiesToStorage(warrantyData);
+                showStatus('Notes Saved', 'Personal notes updated successfully!');
+                // Re-render the detail view to reflect changes
+                renderDetailView(id, 'list');
+             } else {
+                showStatus('Error', 'Could not find warranty record to update notes.', true);
+             }
+        }
+        window.handleNotesUpdate = handleNotesUpdate; // Expose to global scope
+
+
+        /** Renders the full detail/action view for a specific warranty record. */
+        function renderDetailView(id, context) {
+            const warrantyData = getWarrantiesFromStorage();
+            const item = warrantyData.find(w => w.id === id);
+            if (!item) {
+                showStatus('Error', 'Warranty record not found.', true);
+                return;
+            }
+
+            const sections = getDashboardSections();
+            const backSectionId = 'buyer-list'; // Always back to the main list
+            const backSection = sections.find(s => s.id === backSectionId);
+            const progress = getWarrantyProgress(item.purchaseDate, item.expiryDate);
+
+            // Base fields
+            let html = `
+                <!-- FIX: Removed the local 'sections' variable from the onclick call -->
+                <button onclick="renderDashboardContent('${backSection.id}')" class="text-sm text-indigo-600 hover:text-indigo-800 mb-6 flex items-center space-x-1">
+                    &larr; Back to ${backSection.title}
+                </button>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="bg-gray-50 p-6 rounded-xl border-l-4 border-accent">
+                            <h3 class="2xl font-bold text-gray-800">${item.product} (${item.brand})</h3>
+                            <p class="text-sm text-gray-500">${item.productType} | Serial: ${item.serial}</p>
+                            <p class="text-lg mt-2">${formatStatus(item.status)}</p>
+                        </div>
+
+                        <!-- Progress Bar Section -->
+                        <div class="bg-white p-6 rounded-xl border">
+                             <h4 class="text-xl font-semibold mb-3 border-b pb-2">Warranty Progress</h4>
+                            ${renderProgressBar(item.purchaseDate, item.expiryDate)}
+                             <p class="text-sm text-gray-500 mt-4">The warranty is **${progress.text.split(' ')[0]}** complete. Expires on **${item.expiryDate}**.</p>
+                        </div>
+                        
+                        <!-- Warranty Info -->
+                        <div class="grid grid-cols-2 gap-4 bg-white p-6 rounded-xl border">
+                            <h4 class="col-span-2 text-xl font-semibold mb-2 border-b pb-2">Warranty Info</h4>
+                            <div><p class="text-sm font-medium text-gray-500">Purchase Date:</p><p class="font-semibold">${item.purchaseDate}</p></div>
+                            <div><p class="text-sm font-medium text-gray-500">Expiry Date:</p><p class="font-semibold">${item.expiryDate}</p></div>
+                            <div><p class="text-sm font-medium text-gray-500">Product Type:</p><p class="font-semibold">${item.productType}</p></div>
+                            <div><p class="text-sm font-medium text-gray-500">Invoice File:</p><p class="font-semibold text-sm text-gray-700 italic">${item.invoiceFileName || 'Not Recorded'}</p></div>
+                        </div>
+
+                        <!-- Personal Notes Section (Editable) -->
+                        <form onsubmit="handleNotesUpdate(event, ${item.id})" class="bg-white p-6 rounded-xl border space-y-4">
+                            <h4 class="text-xl font-semibold border-b pb-2">Your Personal Notes (Editable)</h4>
+                            <textarea id="notes-edit" name="notes-edit" rows="4" class="w-full px-3 py-2 border rounded-lg focus:ring-accent focus:border-accent">${item.notes || ''}</textarea>
+                            <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                                Save Notes
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Action Panel (Simplified) -->
+                    <div class="bg-white p-6 rounded-xl card space-y-4">
+                        <h4 class="text-xl font-semibold border-b pb-2">Actions</h4>
+                        
+                        <button class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition" 
+                                onclick="showStatus('Claim Filed', 'Claim filed successfully! Please contact support.')">
+                            File New Claim (Mock)
+                        </button>
+                        
+                        <button class="w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition" 
+                                onclick="showStatus('Extension Request', 'Extension request submitted.')">
+                            Request Extension (Mock)
+                        </button>
+                         <button class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition" 
+                                onclick="handleDeleteWarranty(${item.id}); renderDashboardContent('buyer-list', []);">
+                            Remove Record
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('dashboard-content-title').textContent = "Warranty Details";
+            document.getElementById('dashboard-content').innerHTML = html;
+        }
+
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            initializeDOMReferences();
+            initializeMockData(); // Ensures local storage is empty
+            updateAuthFormUI(); // Set up the initial Login/Buyer view
+            navigateTo('login'); // Start on the Login page
+        };
+        
+        // Ensure DOM references are established before functions like showStatus are called
+        function initializeDOMReferences() {
+            floatingStatus = document.getElementById('floating-status');
+            statusContent = document.getElementById('status-content');
+            statusText = document.getElementById('status-text');
+            dismissBtn = document.getElementById('dismiss-btn');
+
+            formTitle = document.getElementById('form-title');
+            authSwitch = document.getElementById('auth-switch');
+            submitButton = document.getElementById('submit-button');
+            fieldName = document.getElementById('name');
+            labelName = document.getElementById('label-name');
+        }
+    </script>
+</body>
+</html>
